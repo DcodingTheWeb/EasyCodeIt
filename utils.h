@@ -20,6 +20,9 @@
 #ifndef UTILS_H
 #define UTILS_H
 
+#include <stdbool.h>
+#include <stdnoreturn.h>
+
 #ifndef READ_FILE_BUFFER_SIZE
 #define READ_FILE_BUFFER_SIZE 1024
 #endif
@@ -30,6 +33,8 @@ struct ReadFileBufferNode {
 	struct ReadFileBufferNode *next;
 };
 
+bool chrcmp(char chr, char *arr, size_t arr_len);
+noreturn void die(char *msg);
 char *readfile(FILE *file);
 
 #endif

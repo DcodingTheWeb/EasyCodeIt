@@ -20,8 +20,21 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdnoreturn.h>
 #include <string.h>
 #include "utils.h"
+
+bool chrcmp(char chr, char *arr, size_t arr_len) {
+	bool present;
+	for (size_t i = 0; i < arr_len; ++i) if (present = chr == arr[i]) break;
+	return present;
+}
+
+noreturn void die(char *msg) {
+	fputs(msg, stderr);
+	if (*msg != '\0') fputs("\n", stderr);
+	exit(EXIT_FAILURE);
+}
 
 char *readfile(FILE *file) {
 	// Define the final buffer

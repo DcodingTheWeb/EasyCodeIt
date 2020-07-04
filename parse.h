@@ -17,29 +17,43 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdnoreturn.h>
-#include "utils.h"
-#include "parse.h"
+#ifndef PARSE_H
+#define PARSE_H
 
-int main(int argc, char *argv[]) {
-	if (argc < 2) die("No arguments!");
-	
-	// Open the source file
-	FILE *source_file = fopen(argv[1], "r");
-	if (!source_file) die("Can't open source file! :(");
-	
-	// Read the source file
-	char *code = readfile(source_file);
-	if (!code) die("Failed to read from source file!");
-	
-	// Parse the code
-	parse(code);
-	
-	// Free the resources
-	free(code);
-	fclose(source_file);
-	
-	return EXIT_SUCCESS;
-}
+#include <stddef.h>
+
+enum TokenType {
+	TOK_UNKNOWN,
+	TOK_WHITESPACE,
+	TOK_COMMENT,
+	TOK_DIRECTIVE,
+	TOK_NUMBER,
+	TOK_STRING,
+	TOK_WORD,
+	TOK_MACRO,
+	TOK_VARIABLE,
+	TOK_OPERATOR,
+	TOK_BRACKET,
+	TOK_DOT,
+	TOK_COMMA,
+};
+
+struct Token {
+	enum TokenType type;
+	char *data;
+	size_t data_len;
+};
+
+void parse(char *code);
+struct Token token_get(char *code, char **next);
+size_t scan_string(char *str, bool (cmpfunc)(char));
+
+bool char_is_whitespace(char chr);
+bool char_is_alpha(char chr);
+bool char_is_num(char chr);
+bool char_is_alphanum(char chr);
+bool char_is_opsym(char chr);
+bool char_is_bracket(char chr);
+bool char_is_not_eol(char chr);
+
+#endif

@@ -236,7 +236,8 @@ struct Token token_get(char *code, char **next) {
 	if (next_code) {
 		*next = *next_code == '\0' ? NULL : next_code;
 	} else {
-		*next = *code == '\0' ? NULL : code + token.data_len;
+		code += token.data_len;
+		*next = *code == '\0' ? NULL : code;
 	}
 	
 	// Return the token

@@ -20,6 +20,7 @@
 #ifndef PARSE_H
 #define PARSE_H
 
+#include <stdbool.h>
 #include <stddef.h>
 
 enum TokenType {
@@ -44,8 +45,22 @@ struct Token {
 	size_t data_len;
 };
 
+struct TokenList {
+	size_t length;
+	struct TokenListNode *head;
+	struct TokenListNode *tail;
+	bool dirty;
+};
+
+struct TokenListNode {
+	struct Token *token;
+	struct TokenListNode *prev;
+	struct TokenListNode *next;
+};
+
 void parse(char *code);
 struct Token token_get(char *code, char **next);
+struct TokenList token_get_list(char *code);
 size_t scan_string(char *str, bool (cmpfunc)(char));
 
 bool char_is_whitespace(char chr);

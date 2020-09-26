@@ -20,6 +20,7 @@
 #include <ctype.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <strings.h>
 #include "parse.h"
 #include "utils.h"
@@ -110,13 +111,15 @@ static void print_token(struct Token *token) {
 }
 
 void parse(char *code) {
-	while (true) {
-		struct Token token = token_get(code, &code);
-		if (!code) break;
-		if (token.type != TOK_WHITESPACE) print_token(&token);
-		if (token.type == TOK_UNKNOWN) die("!!! Unknown token encountered !!!");
-	}
-	return;
+	struct TokenList token_list = token_get_list(code);
+	if (!token_list.length) return;
+	struct TokenListNode *token_list_node = token_list.head;
+	if (token_list.dirty) fputs("!!! WARNING: Unknown token(s) encountered !!!\n", stderr);
+	do {
+		struct Token *token = token_list_node->token;
+		if (token->type != TOK_WHITESPACE) print_token(token);
+		token_list_node = token_list_node->next;
+	} while (token_list_node);
 }
 
 struct Token token_get(char *code, char **next) {
@@ -243,6 +246,35 @@ struct Token token_get(char *code, char **next) {
 	// Return the token
 	return token;
 }
+
+struct TokenList token_get_list(char *code) {
+	struct TokenList list = {.length = 0, .dirty = false};
+	
+	while (code) {
+		struct Token *token = malloc(sizeof(struct Token));
+		if (!token) goto end;
+		
+		*token = token_get(code, &code);
+		if (token->type == TOK_UNKNOWN) list.dirty = true;
+		
+		struct TokenListNode *new_node = malloc(sizeof(struct TokenListNode));
+		if (!new_node) goto end;
+		if (list.tail) {
+			list.tail->next = new_node;
+			new_node->prev = list.tail;
+			list.tail = new_node;
+		} else {
+			list.head = new_node;
+			list.tail = new_node;
+			new_node->prev = NULL;
+		}
+		new_node->token = token;
+		new_node->next = NULL;
+		list.length += 1;
+	}
+	
+	end: return list;
+};
 
 size_t scan_string(char *str, bool (cmpfunc)(char)) {
 	size_t len = 0;

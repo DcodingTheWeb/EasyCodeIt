@@ -32,7 +32,7 @@ const char CHR_VARIABLE = '$';
 const char CHR_DOT = '.';
 const char CHR_COMMA = ',';
 
-char CHRSET_WHITESPACE[] = {' ', '\t', '\n'};
+char CHRSET_WHITESPACE[] = {' ', '\t', '\r', '\n'};
 char CHRSET_QUOTE[] = {'\'', '"'};
 char CHRSET_OPERATOR[] = {
 	'+', '-', '*', '/', '^',

@@ -146,7 +146,7 @@ struct Token token_get(char *code, char **next) {
 		// Check if this is a multi-line comment
 		bool multiline_comment = false;
 		if (token.type == TOK_DIRECTIVE) {
-			bool match_long, match_short;
+			bool match_short, match_long = false;
 			match_short = strncasecmp(STRING_CS, code, (sizeof STRING_CS) - 1) == 0;
 			if (!match_short) match_long = strncasecmp(STRING_COMMENT_START, code, (sizeof STRING_COMMENT_START) - 1) == 0;
 			// Make sure we have a whitespace after the directive
@@ -169,7 +169,7 @@ struct Token token_get(char *code, char **next) {
 				if (*code == '\0') break;
 				if (*code != CHR_DIRECTIVE) continue;
 				
-				bool match_long, match_short, match = false;
+				bool match_short, match_long = false, match = false;
 				++code;
 				match_short = strncasecmp(STRING_CE, code, (sizeof STRING_CE) - 1) == 0;
 				if (!match_short) match_long = strncasecmp(STRING_COMMENT_END, code, (sizeof STRING_COMMENT_END) - 1) == 0;

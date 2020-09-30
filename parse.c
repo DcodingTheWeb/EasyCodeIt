@@ -165,9 +165,8 @@ struct Token token_get(char *code, char **next) {
 			// Scan for the ending directive token
 			char *comment_end;
 			while (true) {
-				code += scan_string(code, char_is_not_eol) + 1;
+				while (*++code != '\0') if (*code == CHR_DIRECTIVE) break;
 				if (*code == '\0') break;
-				if (*code != CHR_DIRECTIVE) continue;
 				
 				bool match_short, match_long = false, match = false;
 				++code;

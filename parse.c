@@ -140,7 +140,18 @@ static void print_token(struct Token *token) {
 	fputs("Type: ", stdout);
 	puts(token_type);
 	fputs("Data: ", stdout);
-	for (size_t c = 0; c < token->data_len; c++) putchar(token->data[c]);
+	size_t i = 0;
+	switch (token->type) {
+		case TOK_WORD:
+			if (!token->info) goto print_raw_data;
+			fputs("<Keyword>", stdout);
+			while (KEYWORD_MAP[i].symbol != *(enum Keyword *)token->info) ++i;
+			fputs(KEYWORD_MAP[i].string, stdout);
+			break;
+		default:
+			print_raw_data:
+			for (size_t c = 0; c < token->data_len; c++) putchar(token->data[c]);
+	}
 	putchar('\n');
 }
 

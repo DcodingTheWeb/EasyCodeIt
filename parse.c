@@ -48,14 +48,6 @@ char STRING_CE[] = "ce";
 char STRING_COMMENT_START[] = "comments-start";
 char STRING_COMMENT_END[] = "comments-end";
 
-struct TokenCharMapElem {
-	enum TokenType type;
-	union {
-		const char chr;
-		const char *chr_arr;
-	};
-};
-
 static void print_token(struct Token *token) {
 	puts("---### TOKEN ###---");
 	char *token_type;

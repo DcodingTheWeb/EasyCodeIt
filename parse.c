@@ -48,6 +48,48 @@ char STRING_CE[] = "ce";
 char STRING_COMMENT_START[] = "comments-start";
 char STRING_COMMENT_END[] = "comments-end";
 
+struct KeywordMap {
+	char *string;
+	enum Keyword symbol;
+};
+
+struct KeywordMap KEYWORD_MAP[] = {
+	{"Dim", KWD_DIM},
+	{"Local", KWD_LOCAL},
+	{"Global", KWD_GLOBAL},
+	{"Enum", KWD_ENUM},
+	{"Const", KWD_CONST},
+	{"Static", KWD_STATIC},
+	{"ContinueCase", KWD_CONT_CASE},
+	{"ContinueLoop", KWD_CONT_LOOP},
+	{"Default", KWD_DEFAULT},
+	{"Null", KWD_NULL},
+	{"Do", KWD_DO},
+	{"Until", KWD_UNTIL},
+	{"While", KWD_WHILE},
+	{"WEnd", KWD_END_WHILE},
+	{"For", KWD_FOR},
+	{"In", KWD_IN},
+	{"To", KWD_TO},
+	{"Step", KWD_STEP},
+	{"Next", KWD_NEXT},
+	{"Exit", KWD_EXIT},
+	{"ExitLoop", KWD_EXITLOOP},
+	{"Func", KWD_FUNC},
+	{"Return", KWD_RETURN},
+	{"EndFunc", KWD_END_FUNC},
+	{"If", KWD_IF},
+	{"Else", KWD_ELSE},
+	{"ElseIf", KWD_ELSE_IF},
+	{"EndIf", KWD_END_IF},
+	{"ReDim", KWD_REDIM},
+	{"Select", KWD_SELECT},
+	{"Switch", KWD_SWITCH},
+	{"Case", KWD_CASE},
+	{"EndSelect", KWD_END_SELECT},
+	{"EndSwitch", KWD_END_SWITCH},
+};
+
 static void print_token(struct Token *token) {
 	puts("---### TOKEN ###---");
 	char *token_type;
@@ -119,6 +161,7 @@ struct Token token_get(char *code, char **next) {
 		.type = TOK_UNKNOWN,
 		.data = NULL,
 		.data_len = 0,
+		.info = NULL,
 	};
 	size_t length;
 	char *next_code = NULL;
@@ -193,6 +236,12 @@ struct Token token_get(char *code, char **next) {
 		token.type = TOK_WORD;
 		token.data = code;
 		token.data_len = length;
+		
+		// Identify keywords
+		for (size_t i = 0; i < sizeof KEYWORD_MAP / sizeof(struct KeywordMap); ++i) if (strncmp(KEYWORD_MAP[i].string, code, length) == 0) {
+			token.info = &(KEYWORD_MAP[i].symbol);
+			break;
+		}
 	} else if (*code == CHR_MACRO || *code == CHR_VARIABLE){
 		// Macro or Variable
 		token.type = *code == CHR_MACRO ? TOK_MACRO : TOK_VARIABLE;

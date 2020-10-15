@@ -39,10 +39,48 @@ enum TokenType {
 	TOK_COMMA,
 };
 
+enum Keyword {
+	KWD_DIM,
+	KWD_LOCAL,
+	KWD_GLOBAL,
+	KWD_ENUM,
+	KWD_CONST,
+	KWD_STATIC,
+	KWD_CONT_CASE,
+	KWD_CONT_LOOP,
+	KWD_DEFAULT,
+	KWD_NULL,
+	KWD_DO,
+	KWD_UNTIL,
+	KWD_WHILE,
+	KWD_END_WHILE,
+	KWD_FOR,
+	KWD_IN,
+	KWD_TO,
+	KWD_STEP,
+	KWD_NEXT,
+	KWD_EXIT,
+	KWD_EXITLOOP,
+	KWD_FUNC,
+	KWD_RETURN,
+	KWD_END_FUNC,
+	KWD_IF,
+	KWD_ELSE,
+	KWD_ELSE_IF,
+	KWD_END_IF,
+	KWD_REDIM,
+	KWD_SELECT,
+	KWD_SWITCH,
+	KWD_CASE,
+	KWD_END_SELECT,
+	KWD_END_SWITCH,
+};
+
 struct Token {
 	enum TokenType type;
 	char *data;
 	size_t data_len;
+	void *info;
 };
 
 struct TokenList {

@@ -262,9 +262,29 @@ struct Token token_get(char *code, char **next) {
 		// Operator
 		token.type = TOK_OPERATOR;
 		token.data = code;
+		token.op_info.sym = opsym_to_opr(*code);
 		
 		// Include the trailing `=` if possible
-		token.data_len = code[1] == '=' && chrcmp(*code, CHRSET_OPERATOR_EQUABLE, sizeof CHRSET_OPERATOR_EQUABLE) ? 2 : 1;
+		bool equable = code[1] == '=' && chrcmp(*code, CHRSET_OPERATOR_EQUABLE, sizeof CHRSET_OPERATOR_EQUABLE);
+		if (equable) {
+			token.data_len = 2;
+			//token.equal_op = token.op;
+			token.op_info.sym = OPR_EQU;
+			token.op_info.op = OP_EQU;
+		} else {
+			token.data_len = 1;
+		}
+		
+		// Assign the operation
+		if (equable) {
+			enum Operator equal_opr = opsym_to_opr(code[1]);
+			token.op_info.equal_op = opr_to_op(equal_opr);
+		} else {
+			token.op_info.op = opr_to_op(token.op_info.sym);
+		}
+		
+		// Assign the precedence
+		token.op_info.precedence = op_to_precedence(token.op_info.op);
 	} else if (char_is_bracket(*code)) {
 		// Bracket (Parenthesis)
 		token.type = TOK_BRACKET;
@@ -326,6 +346,146 @@ struct TokenList token_get_list(char *code) {
 	
 	end: return list;
 };
+
+enum Operator opsym_to_opr(char sym) {
+	enum Operator opr = OPR_ERR;
+	switch (sym) {
+		case '+':
+			opr = OPR_ADD;
+			break;
+		case '-':
+			opr = OPR_SUB;
+			break;
+		case '*':
+			opr = OPR_MUL;
+			break;
+		case '/':
+			opr = OPR_DIV;
+			break;
+		case '^':
+			opr = OPR_EXP;
+			break;
+		case '&':
+			opr = OPR_CAT;
+			break;
+		case '=':
+			opr = OPR_EQU;
+			break;
+		case '<':
+			opr = OPR_LES;
+			break;
+		case '>':
+			opr = OPR_GRT;
+			break;
+		case '?':
+			opr = OPR_CON_MRK;
+			break;
+		case ':':
+			opr = OPR_CON_SEP;
+			break;
+	}
+	return opr;
+}
+
+enum Operation opr_to_op(enum Operator opr) {
+	enum Operation op = OP_ERR;
+	switch (opr) {
+		case OPR_ADD:
+			op = OP_ADD;
+			break;
+		case OPR_SUB:
+			op = OP_SUB;
+			break;
+		case OPR_MUL:
+			op = OP_MUL;
+			break;
+		case OPR_DIV:
+			op = OP_DIV;
+			break;
+		case OPR_EXP:
+			op = OP_EXP;
+			break;
+		case OPR_CAT:
+			op = OP_CAT;
+			break;
+		case OPR_EQU:
+			op = OP_EQU;
+			break;
+		case OPR_LES:
+			op = OP_LT;
+			break;
+		case OPR_GRT:
+			op = OP_GT;
+			break;
+		case OPR_CON_MRK:
+		case OPR_CON_SEP:
+			op = OP_CON;
+			break;
+	}
+	return op;
+}
+
+int op_to_precedence(enum Operation op) {
+	int p = 0; // Precedence
+	
+	switch (op) {
+		case OP_NOT:
+			return p;
+	}
+	++p;
+	
+	switch (op) {
+		case OP_EXP:
+			return p;
+	}
+	++p;
+	
+	switch (op) {
+		case OP_MUL:
+		case OP_DIV:
+			return p;
+	}
+	++p;
+	
+	switch (op) {
+		case OP_ADD:
+		case OP_SUB:
+			return p;
+	}
+	++p;
+	
+	switch (op) {
+		case OP_CAT:
+			return p;
+	}
+	++p;
+	
+	switch (op) {
+		case OP_LT:
+		case OP_GT:
+		case OP_LTE:
+		case OP_GTE:
+		case OP_EQU:
+		case OP_NEQ:
+		case OP_SEQU:
+			return p;
+	}
+	++p;
+	
+	switch (op) {
+		case OP_AND:
+		case OP_OR:
+			return p;
+	}
+	++p;
+	
+	switch (op) {
+		case OP_CON:
+			return p;
+	}
+	
+	return -1;
+}
 
 size_t scan_string(char *str, bool (cmpfunc)(char)) {
 	size_t len = 0;

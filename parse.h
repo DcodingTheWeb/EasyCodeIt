@@ -39,6 +39,19 @@ enum TokenType {
 	TOK_COMMA,
 };
 
+enum Operator {
+	// Invalid
+	OPR_ERR,
+	// '+', '-', '*', '/', '^',
+	OPR_ADD, OPR_SUB, OPR_MUL, OPR_DIV, OPR_EXP,
+	// '&',
+	OPR_CAT,
+	// '=', '<', '>',
+	OPR_EQU, OPR_LES, OPR_GRT,
+	// '?', ':',
+	OPR_CON_MRK, OPR_CON_SEP,
+};
+
 enum Keyword {
 	KWD_DIM,
 	KWD_LOCAL,
@@ -76,11 +89,48 @@ enum Keyword {
 	KWD_END_SWITCH,
 };
 
+enum Operation {
+	/* Error */
+	OP_ERR,
+	
+	/* No Operation */
+	OP_NOP,
+	
+	/* Addition, Substraction, Multiplcation, Division, Exponentiation */
+	OP_ADD, OP_SUB, OP_MUL, OP_DIV, OP_EXP,
+	
+	/* Concatenation */
+	OP_CAT,
+	
+	/* Negation, Logical "And", Logical "Or" */
+	OP_NOT, OP_AND, OP_OR,
+	/* Equality, Strict equality, Inequality*/
+	OP_EQU, OP_SEQU, OP_NEQ,
+	/* Less than, Less than or equal to, Greater than, Greater than or equal to */
+	OP_LT, OP_LTE, OP_GT, OP_GTE,
+	
+	/* Conditional */
+	OP_CON,
+};
+
+struct TokenOperator {
+	enum Operator sym;
+	enum Operation op;
+	enum Operation equal_op; // For equable operations (+=, *=, -=, /= etc.)
+	int precedence;
+};
+
 struct Token {
 	enum TokenType type;
 	char *data;
 	size_t data_len;
-	void *info;
+	union {
+		// Operator
+		struct TokenOperator op_info;
+		
+		// Generic
+		void *info;
+	};
 };
 
 struct TokenList {

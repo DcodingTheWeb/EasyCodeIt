@@ -234,7 +234,17 @@ struct Token token_get(char *code, char **next) {
 		// Number
 		token.type = TOK_NUMBER;
 		token.data = code;
+		
+		// Include the fractional part if present
+		if (code[length] == '.') length += scan_string(code + length + 1, char_is_num) + 1;
+		
 		token.data_len = length;
+		
+		// Parse the number
+		char boundary_char = code[length];
+		code[length] = '\0';
+		token.number = strtod(code, NULL);
+		code[length] = boundary_char;
 	} else if (chrcmp(*code, CHRSET_QUOTE, sizeof CHRSET_QUOTE)) {
 		// String
 		token.type = TOK_STRING;

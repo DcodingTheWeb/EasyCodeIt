@@ -27,6 +27,8 @@
 #define READ_FILE_BUFFER_SIZE 1024
 #endif
 
+#define lenof(array) (sizeof array / sizeof array[0])
+
 struct ReadFileBufferNode {
 	char buffer[READ_FILE_BUFFER_SIZE];
 	size_t data_len;

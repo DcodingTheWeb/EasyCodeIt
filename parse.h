@@ -30,6 +30,7 @@ enum TokenType {
 	TOK_DIRECTIVE,
 	TOK_NUMBER,
 	TOK_STRING,
+	TOK_BOOL,
 	TOK_WORD,
 	TOK_MACRO,
 	TOK_VARIABLE,
@@ -37,6 +38,7 @@ enum TokenType {
 	TOK_BRACKET,
 	TOK_DOT,
 	TOK_COMMA,
+	TOK_EOF,
 };
 
 enum Operator {
@@ -50,9 +52,13 @@ enum Operator {
 	OPR_EQU, OPR_LES, OPR_GRT,
 	// '?', ':',
 	OPR_CON_MRK, OPR_CON_SEP,
+	
+	// Special
+	OPR_AND, OPR_OR, // And, Or
 };
 
 enum Keyword {
+	KWD_NONE, // Special: Not a keyword
 	KWD_DIM,
 	KWD_LOCAL,
 	KWD_GLOBAL,
@@ -87,6 +93,9 @@ enum Keyword {
 	KWD_CASE,
 	KWD_END_SELECT,
 	KWD_END_SWITCH,
+	KWD_AND,
+	KWD_OR,
+	KWD_NOT,
 };
 
 enum Operation {
@@ -95,6 +104,12 @@ enum Operation {
 	
 	/* No Operation */
 	OP_NOP,
+	
+	/* Assignment */
+	OP_ASS,
+	
+	/* Invert (Additive inversion) */
+	OP_INV,
 	
 	/* Addition, Substraction, Multiplcation, Division, Exponentiation */
 	OP_ADD, OP_SUB, OP_MUL, OP_DIV, OP_EXP,
@@ -113,6 +128,20 @@ enum Operation {
 	OP_CON,
 };
 
+enum Precedence {
+	PRE__END,
+	PRE_INV,
+	PRE_NEG,
+	PRE_EXP,
+	PRE_MUL_DIV,
+	PRE_ADD_SUB,
+	PRE_CAT,
+	PRE_COMP, // Comparison
+	PRE_CONJ, // Conjunction (Logical)
+	PRE_ASS,
+	PRE__START,
+};
+
 struct TokenOperator {
 	enum Operator sym;
 	enum Operation op;
@@ -125,8 +154,14 @@ struct Token {
 	char *data;
 	size_t data_len;
 	union {
+		// Number
+		double number;
+		
 		// Operator
 		struct TokenOperator op_info;
+		
+		// Keyword
+		enum Keyword keyword;
 		
 		// Generic
 		void *info;
@@ -146,9 +181,91 @@ struct TokenListNode {
 	struct TokenListNode *next;
 };
 
-void parse(char *code);
+struct Primitive {
+	enum {
+		PRI_NUMBER,
+		PRI_STRING,
+		PRI_BOOLEAN,
+		// ...
+	} type;
+	union {
+		double number;
+		char *string;
+		bool boolean;
+	};
+};
+
+struct Expression;
+
+struct Operand {
+	enum {
+		OPE_PRIMITIVE,
+		//OPE_VARIABLE,
+		//OPE_MACRO,
+		OPE_EXPRESSION,
+	} type;
+	union {
+		struct Primitive *value;
+		//struct Variable *variable;
+		//struct Macro *macro;
+		struct Expression *expression;
+	};
+};
+
+struct Expression {
+	enum Operation op;
+	struct Operand *operands;
+};
+
+struct Declaration {
+	enum {SCO_AUTO, SCO_LOCAL, SCO_GLOBAL} scope;
+	bool is_constant : 1;
+	bool is_static : 1;
+	bool is_function : 1;
+	char *name;
+	union {
+		// Variable or constant
+		struct Expression *initializer;
+		// Function
+		struct {
+			struct Statement *block;
+			size_t size;
+		} code;
+	};
+};
+
+struct Statement {
+	enum StatementType {
+		SMT_DECLARATION,
+		SMT_EXPRESSION,
+	} type;
+	union {
+		struct Declaration *declaration;
+		struct Expression *expression;
+	};
+};
+
+struct Unit {
+	enum UnitType {
+		UNT_COMMENT,
+		UNT_DIRECTIVE,
+		UNT_STATEMENT,
+	} type;
+	union {
+		struct Token *token;
+		struct Statement *statement;
+	};
+};
+
+bool parse(char *code);
 struct Token token_get(char *code, char **next);
 struct TokenList token_get_list(char *code);
+struct Token *token_list_to_array(struct TokenList *list, bool pad);
+
+enum Operator opsym_to_opr(char sym);
+enum Operation opr_to_op(enum Operator opr);
+int op_to_precedence(enum Operation op);
+
 size_t scan_string(char *str, bool (cmpfunc)(char));
 
 bool char_is_whitespace(char chr);
@@ -158,5 +275,18 @@ bool char_is_alphanum(char chr);
 bool char_is_opsym(char chr);
 bool char_is_bracket(char chr);
 bool char_is_not_eol(char chr);
+
+struct Expression expression_get(struct Token *tokens, size_t count);
+bool expression_parse(struct Token *token, size_t count, enum Precedence precedence, struct Expression *expression);
+struct Token *expression_parse_infix_binary(struct Token *tokens, size_t count, enum Operator opr_list[], size_t opr_count, bool left, struct Expression *expression);
+struct Token *expression_parse_comp(struct Token *tokens, size_t count, struct Expression *expression);
+struct Token *expression_parse_assign(struct Token *tokens, size_t count, struct Expression *expression);
+struct Operand *expression_alloc_operands(size_t count);
+struct Token *find_token_by_opr(struct Token *tokens, size_t count, enum Operator opr_list[], size_t opr_count, bool left);
+
+noreturn void raise_error(char *msg, bool free_msg);
+noreturn void raise_error_fmt(char *def, char *fmt, ...);
+noreturn void raise_mem(char *context);
+noreturn void raise_unexpected_token(char *expected, struct Token *got_token);
 
 #endif

@@ -273,9 +273,9 @@ struct Token token_get(char *code, char **next) {
 	} else if (chrcmp(*code, CHRSET_QUOTE, sizeof CHRSET_QUOTE)) {
 		// String
 		token.type = TOK_STRING;
-		const char quote = *code;
+		token.quote = *code;
 		token.data = code + 1;
-		for (token.data_len = 0; token.data[token.data_len] != quote; ++token.data_len);
+		for (token.data_len = 0; token.data[token.data_len] != '\0' && (token.data[token.data_len] != token.quote || (token.data[token.data_len + 1] == token.quote ? ++token.data_len : false)); ++token.data_len);
 		next_code = token.data + token.data_len + 1;
 	} else if (length = scan_string(code, char_is_alphanum)){
 		// Word

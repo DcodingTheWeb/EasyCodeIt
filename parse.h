@@ -157,6 +157,9 @@ struct Token {
 		// Number
 		double number;
 		
+		// String
+		char quote;
+		
 		// Operator
 		struct TokenOperator op_info;
 		

@@ -269,12 +269,14 @@ enum Operator opsym_to_opr(char sym);
 enum Operation opr_to_op(enum Operator opr);
 int op_to_precedence(enum Operation op);
 
+size_t scan_number(char *str);
 size_t scan_string(char *str, bool (cmpfunc)(char));
 
 bool char_is_whitespace(char chr);
 bool char_is_alpha(char chr);
 bool char_is_num(char chr);
 bool char_is_alphanum(char chr);
+bool char_is_hexnum(char chr);
 bool char_is_opsym(char chr);
 bool char_is_bracket(char chr);
 bool char_is_not_eol(char chr);

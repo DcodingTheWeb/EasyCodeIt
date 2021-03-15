@@ -255,14 +255,10 @@ struct Token token_get(char *code, char **next) {
 		} else {
 			token.data_len = scan_string(code, char_is_not_eol);
 		}
-	} else if (length = scan_string(code, char_is_num)){
+	} else if (length = scan_number(code)){
 		// Number
 		token.type = TOK_NUMBER;
 		token.data = code;
-		
-		// Include the fractional part if present
-		if (code[length] == '.') length += scan_string(code + length + 1, char_is_num) + 1;
-		
 		token.data_len = length;
 		
 		// Parse the number
@@ -576,6 +572,22 @@ int op_to_precedence(enum Operation op) {
 	return -1;
 }
 
+size_t scan_number(char *str) {
+	size_t len = scan_string(str, char_is_num);
+	if (len == 1 && chrcmp(str[1], "xX", 2)) {
+		// Hexadecimal
+		len += 1 + scan_string(str + len + 1, char_is_hexnum);
+	} else {
+		if (str[len] == '.') len += 1 + scan_string(str + len + 1, char_is_num); // Fraction
+		if (chrcmp(str[len], "eE", 2)) {
+			// Exponent (scientific notation)
+			if (str[++len] == '-') ++len; // Negative exponent
+			len += scan_string(str + len, char_is_num);
+		}
+	}
+	return len;
+}
+
 size_t scan_string(char *str, bool (cmpfunc)(char)) {
 	size_t len = 0;
 	while (true) {
@@ -599,6 +611,10 @@ bool char_is_num(char chr) {
 
 bool char_is_alphanum(char chr) {
 	return char_is_alpha(chr) || char_is_num(chr) || chr == '_';
+}
+
+bool char_is_hexnum(char chr) {
+	return char_is_num(chr) || chrcmp(chr, "ABCDEFabcdef", 12);
 }
 
 bool char_is_opsym(char chr) {

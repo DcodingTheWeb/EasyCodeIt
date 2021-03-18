@@ -235,20 +235,31 @@ struct Token token_get(char *code, char **next) {
 		if (multiline_comment) {
 			// Scan for the ending directive token
 			char *comment_end;
+			size_t level = 1;
 			while (true) {
 				while (*++code != '\0') if (*code == CHR_DIRECTIVE) break;
 				if (*code == '\0') break;
 				
 				bool match_short, match_long = false, match = false;
+				bool begin = false, end = false;
 				++code;
-				match_short = strncasecmp(STRING_CE, code, (sizeof STRING_CE) - 1) == 0;
-				if (!match_short) match_long = strncasecmp(STRING_COMMENT_END, code, (sizeof STRING_COMMENT_END) - 1) == 0;
+				match_short = (
+					(end = strncasecmp(STRING_CE, code, (sizeof STRING_CE) - 1) == 0)
+					||
+					(begin = strncasecmp(STRING_CS, code, (sizeof STRING_CE) - 1) == 0)
+				);
+				if (!match_short) match_long = (
+					(end = strncasecmp(STRING_COMMENT_END, code, (sizeof STRING_COMMENT_END) - 1) == 0)
+					||
+					(begin = strncasecmp(STRING_COMMENT_START, code, (sizeof STRING_COMMENT_START) - 1) == 0)
+				);
 				// Make sure we have a whitespace after the directive
 				if (match_long || match_short) {
 					comment_end = code + ((match_long ? sizeof STRING_COMMENT_END : sizeof STRING_CE) - 1);
 					match = char_is_whitespace(*comment_end);
 				}
-				if (match) break;
+				if (match) level += begin ? +1 : -1;
+				if (!level) break;
 			}
 			token.data_len = (code - token.data) - 1;
 			next_code = comment_end;

@@ -846,6 +846,7 @@ struct Token *expression_parse_comp(struct Token *tokens, size_t count, struct E
 
 struct Token *expression_parse_assign(struct Token *tokens, size_t count, struct Expression *expression) {
 	struct Token *op_token = expression_parse_infix_binary(tokens, count, &(enum Operator){OPR_EQU}, 1, false, expression);
+	if (!op_token) return NULL;
 	
 	if (op_token->op_info.equal_op != OP_EQU) {
 		// Modify the expression to add the pre-assignment operation

@@ -154,6 +154,9 @@ struct Token {
 	char *data;
 	size_t data_len;
 	union {
+		// Whitespace
+		bool newline;
+		
 		// Number
 		double number;
 		
@@ -220,6 +223,13 @@ struct Expression {
 	struct Operand *operands;
 };
 
+struct DeclarationFuncParam {
+	// Function parameter declaration
+	bool by_ref : 1;
+	bool is_constant : 1;
+	char *name;
+}
+
 struct Declaration {
 	enum {SCO_AUTO, SCO_LOCAL, SCO_GLOBAL} scope;
 	bool is_constant : 1;
@@ -232,6 +242,8 @@ struct Declaration {
 		// Function
 		struct {
 			struct Statement *block;
+			struct DeclarationFuncParam *parameters;
+			//struct Declaration *parameters;
 			size_t size;
 		} code;
 	};
@@ -260,10 +272,10 @@ struct Unit {
 	};
 };
 
-bool parse(char *code);
+char *parse(char *code);
 struct Token token_get(char *code, char **next);
 struct TokenList token_get_list(char *code);
-struct Token *token_list_to_array(struct TokenList *list, bool pad);
+struct Token *token_list_to_array(struct TokenList *list, bool pad, bool strip_ws);
 
 enum Operator opsym_to_opr(char sym);
 enum Operation opr_to_op(enum Operator opr);
@@ -288,6 +300,8 @@ struct Token *expression_parse_comp(struct Token *tokens, size_t count, struct E
 struct Token *expression_parse_assign(struct Token *tokens, size_t count, struct Expression *expression);
 struct Operand *expression_alloc_operands(size_t count);
 struct Token *find_token_by_opr(struct Token *tokens, size_t count, enum Operator opr_list[], size_t opr_count, bool left);
+struct Statement statement_get(struct Token *token, struct Token **next);
+struct Unit unit_get(struct Token *token, struct Token **next);
 
 noreturn void raise_error(char *msg, bool free_msg);
 noreturn void raise_error_fmt(char *def, char *fmt, ...);

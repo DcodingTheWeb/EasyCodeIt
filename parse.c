@@ -29,6 +29,10 @@
 #include <string.h>
 #include "parse.h"
 #include "utils.h"
+#include "dynarr/dynarr.h"
+
+// Internal functions
+void *p_malloc(size_t size, char *context);
 
 const char CHR_COMMENT = ';';
 const char CHR_DIRECTIVE = '#';
@@ -177,19 +181,32 @@ static void print_token(struct Token *token) {
 	putchar('\n');
 }
 
-bool parse(char *code) {
-	if (setjmp(parse_error.jump)) return false;
+char *parse(char *code) {
+	if (setjmp(parse_error.jump)) return parse_error.msg;
 	
 	struct TokenList token_list = token_get_list(code);
 	if (!token_list.length) raise_mem("generating token list");
 	struct TokenListNode *token_list_node = token_list.head;
 	
+	puts("> Printing tokens");
 	if (token_list.dirty) fputs("!!! WARNING: Unknown token(s) encountered !!!\n", stderr);
 	do {
 		struct Token *token = token_list_node->token;
 		if (token->type != TOK_WHITESPACE) print_token(token);
 		token_list_node = token_list_node->next;
 	} while (token_list_node);
+	//return true;
+	puts("> Printing units");
+	struct Token *tokens = token_list_to_array(&token_list, true, true);
+	if (!tokens) raise_mem("flattening token list");
+	struct Token *curr_token = tokens + 1;
+	do {
+		unit_get(curr_token, &curr_token);
+	} while (curr_token->type != TOK_EOF);
+	
+	//expression_get(tokens + 1, token_list.length);
+	
+	return NULL;
 }
 
 struct Token token_get(char *code, char **next) {
@@ -208,6 +225,7 @@ struct Token token_get(char *code, char **next) {
 		token.type = TOK_WHITESPACE;
 		token.data = code;
 		token.data_len = length;
+		token.newline = *code == '\n' || *code == '\r';
 	} else if (*code == CHR_COMMENT || *code == CHR_DIRECTIVE) {
 		// Comment or Directive
 		token.type = *code == CHR_COMMENT ? TOK_COMMENT : TOK_DIRECTIVE;
@@ -402,21 +420,33 @@ struct TokenList token_get_list(char *code) {
 	end: return list;
 };
 
-struct Token *token_list_to_array(struct TokenList *list, bool pad) {
-	struct Token *tokens = malloc(sizeof(struct Token) * (list->length + (pad ? 2 : 0)));
+struct Token *token_list_to_array(struct TokenList *list, bool pad, bool strip_ws) {
+	size_t token_count = list->length;
+	if (strip_ws) {
+		struct TokenListNode *node = list->head;
+		do {
+			if (node->token->type == TOK_WHITESPACE && !node->token->newline) --token_count;
+		} while (node = node->next);
+	}
+	
+	struct Token *tokens = malloc(sizeof(struct Token) * (token_count + (pad ? 2 : 0)));
 	if (!tokens) return NULL;
 	if (pad) /* Reserve first element for padding */ ++tokens;
 	
 	struct TokenListNode *node = list->head;
-	for (size_t i = 0; i < list->length; ++i) {
+	
+	for (size_t i = 0; i < token_count; ++i) {
+		if (node->token->type == TOK_WHITESPACE && !node->token->newline) {
+			--i; // No increment in the next iteration
+			goto next_node;
+		}
 		tokens[i] = *node->token;
-		node = node->next;
+		next_node: node = node->next;
 	}
 	
 	if (pad) {
 		// Apply padding
-		//struct Token padding = {.type = TOK_EOF};
-		tokens[list->length] = (struct Token){
+		tokens[token_count] = (struct Token){
 			.type = TOK_EOF,
 			.data = list->tail->token->data + list->tail->token->data_len,
 			.data_len = 0,
@@ -671,6 +701,11 @@ bool kwd_is_declarator(enum Keyword kwd) {
 struct Expression expression_get(struct Token *tokens, size_t count) {
 	struct Expression expression = {.op = OP_NOP};
 	
+	if (count == 0) {
+		// Assume the expression ends at line end
+		for (;;++count) if (tokens[count].type == TOK_EOF || tokens[count].type == TOK_WHITESPACE && tokens[count].newline) break;
+	}
+	
 	// Calculate the number of actual tokens (anything not a whitespace)
 	size_t actual_count = 0;
 	struct Token *actual_tokens = tokens;
@@ -902,6 +937,161 @@ struct Token *find_token_by_opr(struct Token *tokens, size_t count, enum Operato
 		next: if (left) {if (i == count) break; ++i;} else {if (i == 0) break; --i;}
 	}
 	return NULL;
+}
+
+struct Statement statement_get(struct Token *token, struct Token **next) {
+	struct Statement statement;
+	struct Token *next_token = NULL;
+	
+	bool function, declaration = false;
+	if (token->type == TOK_WORD && kwd_is_declarator(token->keyword)) {
+		function = token->keyword == KWD_FUNC;
+		declaration = true;
+	}
+	
+	if (declaration) {
+		statement.type = SMT_DECLARATION;
+		statement.declaration = malloc(sizeof *statement.declaration);
+		if (statement.declaration == NULL) raise_mem("parsing declaration statement");
+		
+		statement.declaration->is_function = function;
+		if (function) {
+			// Function Declaration
+			statement.declaration->scope = SCO_GLOBAL;
+			statement.declaration->is_function = true;
+			statement.declaration->name = NULL;
+			statement.declaration->code.block = NULL;
+			statement.declaration->code.size = 0;
+			
+			// Name
+			++token;
+			if (token->type != TOK_WORD) raise_unexpected_token("a function name", token);
+			statement.declaration->name = p_malloc(token->data_len + 1, "storing function name");
+			strncpy(statement.declaration->name, token->data, token->data_len);
+			
+			// Parameters
+			// TODO: Implement a dynamic array library
+			// TODO: make an "expect function"
+			expect_token(++token, &(struct Token){.type = TOK_BRACKET, .data = "("}, "opening bracket for function parameters");
+			for (;;) {
+				// ...
+			}
+			
+			// Code block
+			dynarr code_block = dynarr_init(sizeof *statement.declaration->code.block);
+			do {
+				struct Statement func_stmt = statement_get(token, &next_token);
+				dynarr_push(&code_block, &func_stmt);
+			} while (next_token->type != TOK_WORD || next_token->kwd != KWD_END_FUNC)
+			statement.declaration->code.block = dynarr_get(&code_block, &statement.declaration->code.size);
+		} else {
+			// Variable Declaration
+			statement.declaration->scope = SCO_AUTO;
+			statement.declaration->is_static = false;
+			statement.declaration->is_constant = false;
+			statement.declaration->name = NULL;
+			statement.declaration->initializer = NULL;
+			
+			// Metadata
+			do {
+				if (token->keyword == KWD_NONE) /* Not a keyword*/ break;
+				if (!kwd_is_declarator(token->keyword)) break;
+				switch (token->keyword) {
+					case KWD_GLOBAL:
+						statement.declaration->scope = SCO_GLOBAL;
+						break;
+					case KWD_LOCAL:
+						statement.declaration->scope = SCO_LOCAL;
+						break;
+					case KWD_STATIC:
+						statement.declaration->is_static = true;
+						break;
+					case KWD_CONST:
+						statement.declaration->is_constant = true;
+						break;
+				}
+			} while (TOK_WORD == (++token)->type);
+			
+			// Name
+			if (token->type != TOK_VARIABLE) raise_unexpected_token("a variable", token);
+			
+			statement.declaration->name = malloc(token->data_len + 1);
+			if (!statement.declaration->name) raise_mem("storing variable name");
+			strncpy(statement.declaration->name, token->data, token->data_len);
+			
+			// Initializer
+			if (token[1].type != TOK_OPERATOR) goto next;
+			if (token[1].op_info.sym != OPR_EQU) raise_unexpected_token("simple assignment operator (=)", token);
+			statement.declaration->initializer = malloc(sizeof *statement.declaration->initializer);
+			if (!statement.declaration->initializer) raise_mem("parsing initializer");
+			*statement.declaration->initializer = expression_get(token + 2, 0);
+		}
+	} else {
+		statement.type = SMT_EXPRESSION;
+		statement.expression = malloc(sizeof *statement.expression);
+		if (!statement.expression) raise_mem("parsing expression statement");
+		size_t token_count = 0;
+		while (true) {
+			if (token[token_count].type == TOK_WHITESPACE && token[token_count].newline || token[token_count].type == TOK_EOF) break;
+			++token_count;
+		}
+		*statement.expression = expression_get(token, token_count);
+		next_token = token + token_count + 1;
+	}
+	
+	// Set the next token
+	next: *next = next_token ? next_token : token + 1;
+	return statement;
+}
+
+struct Unit unit_get(struct Token *token, struct Token **next) {
+	struct Unit unit;
+	struct Token *next_token = NULL;
+	
+	switch (token->type) {
+		case TOK_WHITESPACE:
+			break;
+		case TOK_COMMENT:
+		case TOK_DIRECTIVE:
+			unit.type = token->type == TOK_COMMENT ? UNT_COMMENT : UNT_DIRECTIVE;
+			unit.token = token;
+			puts("It's a comment/directive");
+			break;
+		default:
+			// Statement
+			unit.type = UNT_STATEMENT;
+			unit.statement = malloc(sizeof *unit.statement);
+			if (!unit.statement) raise_mem("parsing statement");
+			*unit.statement = statement_get(token, &next_token);
+			puts("It's a statement");
+			break;
+	}
+	
+	// Set the next token
+	*next = next_token ? next_token : token + 1;
+	
+	return unit;
+}
+
+//struct Token *token_peek() {}
+
+void expect_token(struct Token *token, struct Token *expected, char *description) {
+	bool match = false;
+	if (token->type != expected->type) goto unexpected;
+	switch (token->type) {
+		case TOK_BRACKET:
+			match = *token->data == *expected->data;
+			break;
+	}
+	if (match) return;
+	unexpected: raise_unexpected_token(description, token);
+};
+
+void *p_malloc(size_t size, char *context) {
+	// 'p' as in parser
+	void *mem = malloc(size);
+	if (!mem) raise_mem(context);
+	return mem;
 }
 
 noreturn void raise_error(char *msg, bool free_msg) {

@@ -1,0 +1,3 @@
+[submodule "dynarr"]
+	path = dynarr
+	url = https://github.com/TheDcoder/dynarr

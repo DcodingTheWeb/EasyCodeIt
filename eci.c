@@ -35,7 +35,11 @@ int main(int argc, char *argv[]) {
 	if (!code) die("Failed to read from source file!");
 	
 	// Parse the code
-	parse(code);
+	char *parse_error = parse(code);
+	if (parse_error) {
+		fputs("An error occured while parsing the code!\n", stderr);
+		die(parse_error);
+	}
 	
 	// Free the resources
 	free(code);

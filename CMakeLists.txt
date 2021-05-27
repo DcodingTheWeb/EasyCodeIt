@@ -12,3 +12,7 @@ if(CMAKE_COMPILER_IS_GNUCC)
 		add_compile_options(-fsanitize=undefined,address)
 	endif()
 endif()
+
+# Link dynarr (dynamic array)
+add_subdirectory(dynarr)
+target_link_libraries(eci PRIVATE dynarr)
